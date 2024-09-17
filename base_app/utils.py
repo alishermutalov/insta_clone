@@ -8,18 +8,23 @@ from django.conf import settings
 
 
 email_regex = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b')
-phone_regex = re.compile(r'^\+?[1-9]\d{6,14}$')
 
 def check_email_or_phone(email_or_phone):
-    phone_number = phonenumbers.parse(email_or_phone)
     if re.fullmatch(email_regex, email_or_phone):
         return "email"
-    elif phonenumbers.is_valid_number(phone_number):
-        return "phone"
-    else:
+    try:
+        phone_number = phonenumbers.parse(email_or_phone) 
+        if phonenumbers.is_valid_number(phone_number):
+            return "phone"
+    except phonenumbers.NumberParseException as e:
         raise ValidationError({
+            "success": False,
+            "message": "Email or Phone number invalid",
+            "details": str(e)
+        })
+    raise ValidationError({
             "success":False,
-            "message":"Email yoki Telefon raqam noto'g'ri"
+            "message":"Email or Phone number invalid"
         })
         
 class EmailThread(threading.Thread):
