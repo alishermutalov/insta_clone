@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime,timedelta
 import random
 import uuid
 from django.db import models
@@ -100,7 +100,8 @@ class User(AbstractUser, BaseModel):
         super(User, self).save(*args, **kwargs)
     
     
-EMAIL_EXPIRE, PHONE_EXPIRE = 5, 2
+EMAIL_EXPIRE = 5
+PHONE_EXPIRE = 2
 
 
 class UserConfirmation(BaseModel):
@@ -118,11 +119,10 @@ class UserConfirmation(BaseModel):
     def __str__(self):
         return f"insta-{self.user}"
     
-    def save(self, *args, **kwargs) -> None:
-        if not self.pk:
-            if self.verification_type == VIA_EMAIL:
-                self.expiration_time = datetime().now() + datetime.timedelta(minutes=EMAIL_EXPIRE)
-            else:
-                self.expiration_time = datetime().now() + datetime.timedelta(minutes=PHONE_EXPIRE)
+    def save(self, *args, **kwargs):
+        if self.verification_type == VIA_EMAIL:
+            self.expiration_time = datetime.now() + timedelta(minutes=EMAIL_EXPIRE)
+        else:
+            self.expiration_time = datetime.now() + timedelta(minutes=PHONE_EXPIRE)
         super(UserConfirmation, self).save(*args, **kwargs)
     
