@@ -4,7 +4,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from .models import User, VIA_EMAIL, VIA_PHONE, NEW, CODE_VERIFIED, DONE, PHOTO_STEP
-from base_app.utils import check_email_or_phone, send_async_mail
+from base_app.utils import check_email_or_phone, send_async_mail, send_sms_verification_code
 
 
 class SignUpSerializer(serializers.ModelSerializer):
@@ -38,6 +38,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             )
         elif user.auth_type == VIA_PHONE:
             code = user.create_verification_code(VIA_EMAIL)
+            #send_sms_verification_code(user.phone_number, code) #It's not working if you don't have twilio subscription!
             print(code)
         user.save()
         return user
