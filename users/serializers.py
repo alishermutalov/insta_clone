@@ -4,7 +4,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from .models import User, VIA_EMAIL, VIA_PHONE, NEW, CODE_VERIFIED, DONE, PHOTO_STEP
-from base_app.utils import check_email_or_phone, send_async_mail
+from base_app.utils import check_email_or_phone, send_async_mail, send_sms_verification_code
 
 
 class SignUpSerializer(serializers.ModelSerializer):
@@ -38,6 +38,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             )
         elif user.auth_type == VIA_PHONE:
             code = user.create_verification_code(VIA_EMAIL)
+            #send_sms_verification_code(user.phone_number, code) #It's not working if you don't have twilio subscription!
             print(code)
         user.save()
         return user
@@ -53,11 +54,21 @@ class SignUpSerializer(serializers.ModelSerializer):
         user_input = str(data.get('email_or_phone_number')).lower()
         input_type = check_email_or_phone(user_input)
         if input_type=='email':
+            if User.objects.filter(email=user_input).exists():
+                raise ValidationError({
+                    'success': False,
+                    'message': 'This email is already taken!'
+                })
             data = {
                 'email':user_input,
                 'auth_type': VIA_EMAIL
             }
         elif input_type=='phone':
+            if User.objects.filter(phone_number=user_input).exists():
+                raise ValidationError({
+                    'success': False,
+                    'message': 'This phone number is already taken!'
+                })
             data = {
                 'phone_number':user_input,
                 'auth_type':VIA_PHONE
@@ -76,3 +87,4 @@ class SignUpSerializer(serializers.ModelSerializer):
         data = super(SignUpSerializer, self).to_representation(instance)
         data.update(instance.token())
         return data
+    
