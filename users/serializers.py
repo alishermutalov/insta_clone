@@ -36,6 +36,9 @@ class SignUpSerializer(serializers.ModelSerializer):
                 f"Your confirmation code: {code}",
                 [user.email,]
             )
+        elif user.auth_type == VIA_PHONE:
+            code = user.create_verification_code(VIA_EMAIL)
+            print(code)
         user.save()
         return user
         
