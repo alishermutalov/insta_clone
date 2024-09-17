@@ -56,7 +56,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             if User.objects.filter(email=user_input).exists():
                 raise ValidationError({
                     'success': False,
-                    'message': 'This email is already taken'
+                    'message': 'This email is already taken!'
                 })
             data = {
                 'email':user_input,
@@ -66,7 +66,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             if User.objects.filter(phone_number=user_input).exists():
                 raise ValidationError({
                     'success': False,
-                    'message': 'This phone number is already taken'
+                    'message': 'This phone number is already taken!'
                 })
             data = {
                 'phone_number':user_input,
