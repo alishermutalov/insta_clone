@@ -1,6 +1,8 @@
 import re
 import threading
 import phonenumbers
+import decouple
+from twilio.rest import Client
 
 from rest_framework.exceptions import ValidationError
 from django.core.mail import send_mail
@@ -44,3 +46,14 @@ class EmailThread(threading.Thread):
         
 def send_async_mail(subject:str, message:str, recipient_list:list[str]):
     EmailThread(subject, message, recipient_list).start()
+
+def send_sms_verification_code(phone_number, code):
+    account_sid = decouple.config('TWILIO_ACCOUNT_SID')
+    auth_token = decouple.config('TWILIO_AUTH_TOKEN')
+    from_user = decouple.config('FROM_USER_PHONE_NUMBER')
+    client = Client(account_sid, auth_token)
+    client.messages.create(
+        body=f"Your verification code: {code}",
+        from_= from_user,
+        to = str(phone_number)
+    )
