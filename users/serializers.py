@@ -53,11 +53,21 @@ class SignUpSerializer(serializers.ModelSerializer):
         user_input = str(data.get('email_or_phone_number')).lower()
         input_type = check_email_or_phone(user_input)
         if input_type=='email':
+            if User.objects.filter(email=user_input).exists():
+                raise ValidationError({
+                    'success': False,
+                    'message': 'This email is already taken'
+                })
             data = {
                 'email':user_input,
                 'auth_type': VIA_EMAIL
             }
         elif input_type=='phone':
+            if User.objects.filter(phone_number=user_input).exists():
+                raise ValidationError({
+                    'success': False,
+                    'message': 'This phone number is already taken'
+                })
             data = {
                 'phone_number':user_input,
                 'auth_type':VIA_PHONE
@@ -76,3 +86,4 @@ class SignUpSerializer(serializers.ModelSerializer):
         data = super(SignUpSerializer, self).to_representation(instance)
         data.update(instance.token())
         return data
+    
