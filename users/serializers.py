@@ -1,11 +1,15 @@
+from typing import Any, Dict
 from rest_framework import exceptions
 from django.db.models import Q
+from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from django.core.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import User, VIA_EMAIL, VIA_PHONE, NEW, CODE_VERIFIED, DONE, PHOTO_STEP
-from base_app.utils import check_email_or_phone, send_async_mail, send_sms_verification_code
+from .models import User, VIA_EMAIL, VIA_PHONE, NEW, CODE_VERIFIED, DONE, PHOTO_DONE
+from base_app.utils import check_email_or_phone, send_async_mail, send_sms_verification_code, check_username
 
 
 class SignUpSerializer(serializers.ModelSerializer):
@@ -159,4 +163,94 @@ class UpdateUserInfoSerializer(serializers.Serializer):
         
         
         return instance
+
+
+class SetUserPhotoSerializer(serializers.Serializer):
+    photo = serializers.ImageField()
     
+    def validate_photo(self, data):
+        file_size = data.size
+        max_size = 10 * 1024 * 1024 #10MB
+        if file_size>max_size:
+            ValidationError({
+                'success':False,
+                'message':'Image file is too large. Maximum allowed size is 10MB.'
+            })
+        return data
+    
+    def update(self, instance, validated_data):
+        instance.photo = validated_data.get('photo', instance.photo)
+        if instance.auth_status == DONE and instance.photo:
+            instance.auth_status = PHOTO_DONE
+        instance.save()
+        return instance
+    
+
+class LoginSerializer(TokenObtainPairSerializer):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields['user_input'] = serializers.CharField(required=True)
+        self.fields['username'] = serializers.CharField(required=False, read_only=True)
+        
+    def auth_validate(self, data):
+        user_input = data.get('user_input')
+        
+        if check_email_or_phone(user_input)=="email":
+            try:
+                print("email part")
+                user = User.objects.get(email__iexact=user_input)
+                username = user.username
+            except:
+                raise ValidationError({
+                    'message':'No user found for this email'
+                })
+        elif check_email_or_phone(user_input)=="phone":
+            print('phone----phone')
+            try:
+                print('phone-try')
+                user = User.objects.get(phone_number=user_input)
+                username = user.username
+                print(username)
+            except Exception as e:
+                raise ValidationError({
+                    'message':'No user found for this phone number'
+                })
+        elif check_email_or_phone(user_input)=="username":
+            try:
+                user = User.objects.get(username=user_input)
+                username = user.username
+            except:
+                raise ValidationError({
+                    'message':'No user found for this username'
+                })
+        else:
+                raise ValidationError({
+                    'message':'No user found. Check your login data or Register now!'
+                })
+        
+        authentication_kwargs = {
+            self.username_field : username,
+            "password":data["password"]
+        }    
+        
+        if user is not None and user.auth_status in [CODE_VERIFIED, NEW]:
+            raise ValidationError({
+                'message': 'You are not fully registered yet!'
+            })
+        user = authenticate(**authentication_kwargs)
+        if user is not None:
+            self.user = user
+        else:
+            raise ValidationError({
+                'message':'Sorry, your username or password incorrect, please try again!'
+            })
+        
+    def validate(self, attrs: Dict[str, Any]) -> Dict[str, str]:
+        self.auth_validate(attrs)
+        if self.user.auth_status not in [DONE, PHOTO_DONE]:
+            raise PermissionDenied("You can't login. You don't have permission.")
+        attrs = self.user.token()
+        attrs['auth_status'] = self.user.auth_status
+        attrs['full_name'] = self.user.full_name
+        return attrs
+        

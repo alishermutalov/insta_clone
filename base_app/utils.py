@@ -10,20 +10,31 @@ from django.conf import settings
 
 
 email_regex = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b')
+username_regex = re.compile(r'^[A-Za-z0-9_-]{3,15}$')
+
+def check_username(username:str):
+    if re.fullmatch(username_regex, username):
+        return True
+    else:
+        return False
 
 def check_email_or_phone(email_or_phone):
     if re.fullmatch(email_regex, email_or_phone):
         return "email"
+    
     try:
         phone_number = phonenumbers.parse(email_or_phone) 
         if phonenumbers.is_valid_number(phone_number):
             return "phone"
-    except phonenumbers.NumberParseException as e:
-        raise ValidationError({
-            "success": False,
-            "message": "Email or Phone number invalid",
-            "details": str(e)
-        })
+    except phonenumbers.NumberParseException as e: #
+        if check_username(email_or_phone):
+            return "username"
+        else:
+            raise ValidationError({
+                "success": False,
+                "message": "Email, Username or Phone number invalid",
+                "details": str(e)
+            })
     raise ValidationError({
             "success":False,
             "message":"Email or Phone number invalid"
@@ -57,3 +68,4 @@ def send_sms_verification_code(phone_number, code):
         from_= from_user,
         to = str(phone_number)
     )
+    

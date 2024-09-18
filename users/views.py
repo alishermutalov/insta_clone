@@ -5,9 +5,10 @@ from rest_framework.views import APIView
 from rest_framework import permissions
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import SignUpSerializer, UpdateUserInfoSerializer
-from .models import User, DONE, CODE_VERIFIED, PHOTO_STEP, VIA_EMAIL, VIA_PHONE
+from .serializers import SignUpSerializer, UpdateUserInfoSerializer, SetUserPhotoSerializer, LoginSerializer
+from .models import User, DONE, CODE_VERIFIED, VIA_EMAIL, VIA_PHONE
 from base_app.utils import send_async_mail, send_sms_verification_code
 
 
@@ -107,13 +108,22 @@ class UpdateUserInfoAPIView(UpdateAPIView):
             'message':'User information updated successfully!'
         })
         
-"""
-{
-    "username": "ali",
-    "first_name":"Alisher",
-    "last_name":"Mutalov",
-    "password":"1234",
-    "confirm_password":"12345"
-
-}
-"""
+        
+class SetOrUpdateUserPhotoAPIView(UpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated,]
+    serializer_class = SetUserPhotoSerializer
+    
+    def get_object(self):
+        return self.request.user
+    
+    def update(self, request, *args, **kwargs):
+        super().update(request, *args, **kwargs)
+        return Response({
+            'success':True,
+            'message':'User Photo Set Successfully!'
+        })
+        
+        
+class LoginAPIView(TokenObtainPairView):
+    serializer_class = LoginSerializer
+    
