@@ -1,12 +1,12 @@
 from django.shortcuts import render
 from datetime import datetime
-from rest_framework.generics import CreateAPIView
+from rest_framework.generics import CreateAPIView, UpdateAPIView
 from rest_framework.views import APIView
 from rest_framework import permissions
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from .serializers import SignUpSerializer
+from .serializers import SignUpSerializer, UpdateUserInfoSerializer
 from .models import User, DONE, CODE_VERIFIED, PHOTO_STEP, VIA_EMAIL, VIA_PHONE
 from base_app.utils import send_async_mail, send_sms_verification_code
 
@@ -84,3 +84,36 @@ class GetNewVerificationCodeAPIView(APIView):
                 'message':'Your code has been sent, please wait!'
             })
         
+
+class UpdateUserInfoAPIView(UpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated,]
+    serializer_class = UpdateUserInfoSerializer
+    http_method_names = ['patch', 'put'] 
+    
+    def get_object(self):
+        return self.request.user
+    
+    def update(self, request, *args, **kwargs):
+        super(UpdateUserInfoAPIView, self).update(request, *args, **kwargs)
+        return Response({
+            'succss':True,
+            'message':'User information updated successfully!'
+        })
+        
+    def partial_update(self, request, *args, **kwargs):
+        super(UpdateUserInfoAPIView, self).partial_update(request, *args, **kwargs)
+        return Response({
+            'succss':True,
+            'message':'User information updated successfully!'
+        })
+        
+"""
+{
+    "username": "ali",
+    "first_name":"Alisher",
+    "last_name":"Mutalov",
+    "password":"1234",
+    "confirm_password":"12345"
+
+}
+"""
