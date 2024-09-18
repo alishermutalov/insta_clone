@@ -1,12 +1,14 @@
 from typing import Any, Dict
-from rest_framework import exceptions
 from django.db.models import Q
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import update_last_login
 from django.contrib.auth.password_validation import validate_password
-from rest_framework import serializers
 from django.core.exceptions import PermissionDenied
+from rest_framework import serializers
+from rest_framework.generics import get_object_or_404
 from rest_framework.exceptions import ValidationError
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import AccessToken
 
 from .models import User, VIA_EMAIL, VIA_PHONE, NEW, CODE_VERIFIED, DONE, PHOTO_DONE
 from base_app.utils import check_email_or_phone, send_async_mail, send_sms_verification_code, check_username
@@ -254,3 +256,12 @@ class LoginSerializer(TokenObtainPairSerializer):
         attrs['full_name'] = self.user.full_name
         return attrs
         
+        
+class RefreshTokenSerializer(TokenRefreshSerializer):
+    def validate(self, attrs: Dict[str, Any]) -> Dict[str, str]:
+        data = super().validate(attrs)
+        acces_token_instance = AccessToken(data["access"])
+        user_id = acces_token_instance['user_id']
+        user = get_object_or_404(User, id=user_id)
+        update_last_login(None, user)
+        return data

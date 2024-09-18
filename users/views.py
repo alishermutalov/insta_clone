@@ -5,9 +5,10 @@ from rest_framework.views import APIView
 from rest_framework import permissions
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .serializers import SignUpSerializer, UpdateUserInfoSerializer, SetUserPhotoSerializer, LoginSerializer
+from .serializers import SignUpSerializer, UpdateUserInfoSerializer, \
+    SetUserPhotoSerializer, LoginSerializer, RefreshTokenSerializer
 from .models import User, DONE, CODE_VERIFIED, VIA_EMAIL, VIA_PHONE
 from base_app.utils import send_async_mail, send_sms_verification_code
 
@@ -126,4 +127,8 @@ class SetOrUpdateUserPhotoAPIView(UpdateAPIView):
         
 class LoginAPIView(TokenObtainPairView):
     serializer_class = LoginSerializer
+    
+
+class LoginRefreshAPIView(TokenRefreshView):
+    serializer_class = RefreshTokenSerializer
     
