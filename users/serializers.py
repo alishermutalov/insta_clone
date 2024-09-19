@@ -1,12 +1,14 @@
 from typing import Any, Dict
-from rest_framework import exceptions
 from django.db.models import Q
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import update_last_login
 from django.contrib.auth.password_validation import validate_password
-from rest_framework import serializers
 from django.core.exceptions import PermissionDenied
-from rest_framework.exceptions import ValidationError
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework import serializers
+from rest_framework.generics import get_object_or_404
+from rest_framework.exceptions import ValidationError, NotFound
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import AccessToken
 
 from .models import User, VIA_EMAIL, VIA_PHONE, NEW, CODE_VERIFIED, DONE, PHOTO_DONE
 from base_app.utils import check_email_or_phone, send_async_mail, send_sms_verification_code, check_username
@@ -197,7 +199,6 @@ class LoginSerializer(TokenObtainPairSerializer):
         
         if check_email_or_phone(user_input)=="email":
             try:
-                print("email part")
                 user = User.objects.get(email__iexact=user_input)
                 username = user.username
             except:
@@ -205,12 +206,9 @@ class LoginSerializer(TokenObtainPairSerializer):
                     'message':'No user found for this email'
                 })
         elif check_email_or_phone(user_input)=="phone":
-            print('phone----phone')
             try:
-                print('phone-try')
                 user = User.objects.get(phone_number=user_input)
                 username = user.username
-                print(username)
             except Exception as e:
                 raise ValidationError({
                     'message':'No user found for this phone number'
@@ -254,3 +252,64 @@ class LoginSerializer(TokenObtainPairSerializer):
         attrs['full_name'] = self.user.full_name
         return attrs
         
+        
+class RefreshTokenSerializer(TokenRefreshSerializer):
+    def validate(self, attrs: Dict[str, Any]) -> Dict[str, str]:
+        data = super().validate(attrs)
+        acces_token_instance = AccessToken(data["access"])
+        user_id = acces_token_instance['user_id']
+        user = get_object_or_404(User, id=user_id)
+        update_last_login(None, user)
+        return data
+    
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+    
+    
+class ForgotPasswordSerializer(serializers.Serializer):
+    email_or_phone = serializers.CharField(write_only=True, required=True)
+
+    def validate(self, attrs):
+        
+        email_or_phone = attrs.get('email_or_phone')
+        if email_or_phone is None:
+            raise ValidationError({
+                'message':'You must enter email or phone number'
+            })
+        user = User.objects.filter(Q(phone_number=email_or_phone) | Q(email__iexact=email_or_phone))
+        if not user.exists():
+            raise NotFound(detail="User not found")
+        
+        attrs['user'] = user.first()
+        return attrs
+    
+    
+class ResetUserPasswordSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(read_only=True)
+    password = serializers.CharField(min_length=8, required=True, write_only=True)
+    confirm_password = serializers.CharField(min_length=8, required=True, write_only=True)
+    
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'password',
+            'confirm_password'
+        ]
+    
+    def validate(self, attrs):
+        password = attrs.get('password')
+        confirm_password = attrs.get('confirm_password')
+        if password != confirm_password:
+            raise ValidationError({
+                'message':'Your password and confirmation password are not same'
+            })
+        if password:
+            validate_password(password)
+        return attrs
+    
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password') # .pop() Retrieves and removes 'password' from validated_data
+        instance.set_password(password)
+        instance.save()
+        return super().update(instance, validated_data)
