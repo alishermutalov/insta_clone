@@ -3,14 +3,17 @@ from datetime import datetime
 from rest_framework.generics import CreateAPIView, UpdateAPIView
 from rest_framework.views import APIView
 from rest_framework import permissions
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 
 from .serializers import SignUpSerializer, UpdateUserInfoSerializer, \
-    SetUserPhotoSerializer, LoginSerializer, RefreshTokenSerializer
+    SetUserPhotoSerializer, LoginSerializer, RefreshTokenSerializer,\
+        LogoutSerializer, ForgotPasswordSerializer, ResetUserPasswordSerializer
 from .models import User, DONE, CODE_VERIFIED, VIA_EMAIL, VIA_PHONE
-from base_app.utils import send_async_mail, send_sms_verification_code
+from base_app.utils import send_async_mail, send_sms_verification_code, check_email_or_phone
 
 
 
@@ -132,3 +135,67 @@ class LoginAPIView(TokenObtainPairView):
 class LoginRefreshAPIView(TokenRefreshView):
     serializer_class = RefreshTokenSerializer
     
+class LogoutAPIView(APIView):
+    serializer_class = LogoutSerializer
+    permission_classes = [permissions.IsAuthenticated,]
+    
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data = self.request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            refresh_token = self.request.data['refresh']
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({
+                'success':True,
+                'message':'You successfully logged out!'
+            }, status=205)
+        except TokenError:
+            return Response(status=400)
+        
+    
+class ForgotPasswordAPIView(APIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = ForgotPasswordSerializer
+    
+    def post(self, requst, *args, **kwargs):
+        serializer = self.serializer_class(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data.get('user')
+        email_or_phone = serializer.validated_data.get('email_or_phone')
+        if check_email_or_phone(email_or_phone)=="email":
+            code = user.create_verification_code(VIA_EMAIL)
+            send_async_mail("Insta: Forgot Password",
+                            f"Insta. Code: {code}",
+                            [email_or_phone,])
+        elif check_email_or_phone(email_or_phone)=="phone":
+            code = user.create_verification_code(VIA_PHONE)
+            # send_sms_verification_code(email_or_phone, code) #If you don't have twilio subscription this function doesn't works
+            print(code)
+            
+        return Response({
+            'Success':True,
+            'message':'Verification code sent successfully',
+            'access': user.token()['access'],
+            'refresh': user.token()['refresh_token']
+        }, status=200)
+      
+        
+class ResetUserPasswordAPIView(UpdateAPIView):
+    serializer_class = ResetUserPasswordSerializer
+    permission_classes = [permissions.IsAuthenticated,]
+    http_method_names = ['pot', 'patch']
+    
+    def get_object(self):
+        return self.request.user
+    
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        user = self.get_object()
+        
+        return Response({
+            'success':True,
+            'message':'Your Password Changed Successfully!',
+            'access': user.token()['access'],
+            'refresh': user.token()['refresh_token']
+        })
