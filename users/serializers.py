@@ -86,11 +86,10 @@ class SignUpSerializer(serializers.ModelSerializer):
                 'message':'You must send email addres or phone number!'
             }
             raise ValidationError(data)
-        print('data: ', data)
+        
         return data
     
     def to_representation(self, instance):
-        print(instance)
         data = super(SignUpSerializer, self).to_representation(instance)
         data.update(instance.token())
         return data
@@ -161,8 +160,6 @@ class UpdateUserInfoSerializer(serializers.Serializer):
         if instance.auth_status == CODE_VERIFIED:
             instance.auth_status = DONE
         instance.save()
-        
-        
         
         return instance
 
