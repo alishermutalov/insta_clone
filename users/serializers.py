@@ -115,6 +115,10 @@ class UpdateUserInfoSerializer(serializers.Serializer):
         return data
     
     def validate_username(self, username):
+        if User.objects.filter(username__iexact=username):
+            raise ValidationError({
+                "message":"This username alredy taken!"
+            })
         if len(username)<4 or len(username)>32:
             raise ValidationError({
                 'message':'Username must be more than 4 characters and less than 32 characters'
