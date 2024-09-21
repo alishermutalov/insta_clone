@@ -86,11 +86,10 @@ class SignUpSerializer(serializers.ModelSerializer):
                 'message':'You must send email addres or phone number!'
             }
             raise ValidationError(data)
-        print('data: ', data)
+        
         return data
     
     def to_representation(self, instance):
-        print(instance)
         data = super(SignUpSerializer, self).to_representation(instance)
         data.update(instance.token())
         return data
@@ -116,6 +115,10 @@ class UpdateUserInfoSerializer(serializers.Serializer):
         return data
     
     def validate_username(self, username):
+        if User.objects.filter(username__iexact=username):
+            raise ValidationError({
+                "message":"This username alredy taken!"
+            })
         if len(username)<4 or len(username)>32:
             raise ValidationError({
                 'message':'Username must be more than 4 characters and less than 32 characters'
@@ -161,8 +164,6 @@ class UpdateUserInfoSerializer(serializers.Serializer):
         if instance.auth_status == CODE_VERIFIED:
             instance.auth_status = DONE
         instance.save()
-        
-        
         
         return instance
 

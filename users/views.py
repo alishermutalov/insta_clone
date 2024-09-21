@@ -12,7 +12,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from .serializers import SignUpSerializer, UpdateUserInfoSerializer, \
     SetUserPhotoSerializer, LoginSerializer, RefreshTokenSerializer,\
         LogoutSerializer, ForgotPasswordSerializer, ResetUserPasswordSerializer
-from .models import User, DONE, CODE_VERIFIED, VIA_EMAIL, VIA_PHONE
+from .models import User, DONE, CODE_VERIFIED, VIA_EMAIL, VIA_PHONE, PHOTO_DONE
 from base_app.utils import send_async_mail, send_sms_verification_code, check_email_or_phone
 
 
@@ -21,6 +21,7 @@ class CreateUserAPIView(CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (permissions.AllowAny, )
     serializer_class = SignUpSerializer
+    
     
 class VerifyAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -50,10 +51,11 @@ class VerifyAPIView(APIView):
             })
         else:
             verifications.update(is_confirmed=True)
-        if user.auth_status not in DONE:
+        if user.auth_status not in [DONE, PHOTO_DONE]:
             user.auth_status = CODE_VERIFIED
             user.save()
         return True
+    
     
 class GetNewVerificationCodeAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated,]
@@ -174,7 +176,7 @@ class ForgotPasswordAPIView(APIView):
             print(code)
             
         return Response({
-            'Success':True,
+            'success':True,
             'message':'Verification code sent successfully',
             'access': user.token()['access'],
             'refresh': user.token()['refresh_token']
@@ -184,13 +186,13 @@ class ForgotPasswordAPIView(APIView):
 class ResetUserPasswordAPIView(UpdateAPIView):
     serializer_class = ResetUserPasswordSerializer
     permission_classes = [permissions.IsAuthenticated,]
-    http_method_names = ['pot', 'patch']
+    http_method_names = ['put', 'patch']
     
     def get_object(self):
         return self.request.user
     
     def update(self, request, *args, **kwargs):
-        response = super().update(request, *args, **kwargs)
+        super().update(request, *args, **kwargs)
         user = self.get_object()
         
         return Response({
