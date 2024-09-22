@@ -39,7 +39,7 @@ class User(AbstractUser, BaseModel):
                               validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'heic'])])
     
     def __str__(self):
-        return f"insta-{self.id}"
+        return f"{self.username}"
     
     @property
     def full_name(self):
