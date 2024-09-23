@@ -1,12 +1,13 @@
-from django.db.models import Q
+from django.db.models import Q, Count
 from rest_framework.generics import ListAPIView, CreateAPIView, \
-    RetrieveUpdateDestroyAPIView, DestroyAPIView, RetrieveAPIView
+    RetrieveUpdateDestroyAPIView, DestroyAPIView, RetrieveAPIView, GenericAPIView
 from rest_framework import permissions
 from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.response import Response
 
 from base_app.custom_pagination import CustomPagination
 from .models import Post, PostComment, PostLike, CommentLike
+from users.models import User
 from . import serializers
 # Create your views here.
 
@@ -194,3 +195,38 @@ class PostCommentLikeDeleteAPIView(DestroyAPIView):
                 "success": False,
                 "message": "Like not found or permission denied"
             }, status=404)
+            
+            
+class SearchAPIView(GenericAPIView):
+    permission_classes = [permissions.AllowAny,]
+    def get(self, request, *args, **kwargs):
+        query = request.GET.get('q', '')
+        user_results, post_results = [], []
+
+        if query:
+            user_queryset = User.objects.filter(
+                Q(username__icontains=query) |
+                Q(first_name__icontains=query) |
+                Q(last_name__icontains=query)
+            ).annotate(
+                relevance=Count('username', filter=Q(username__icontains=query)) +
+                          Count('first_name', filter=Q(first_name__icontains=query)) +
+                          Count('last_name', filter=Q(last_name__icontains=query))
+            ).order_by('-relevance')
+
+            user_results = serializers.UserSearchSerializer(user_queryset, many=True).data
+            post_queryset = Post.objects.filter(
+                Q(caption__icontains=query)
+            ).annotate(
+                relevance=Count('caption', filter=Q(caption__icontains=query))
+            ).order_by('-relevance')
+
+            # Serialize the post results
+            post_results =  serializers.PostSearchSerializer(post_queryset, many=True).data
+
+        # Combine user and post results
+        results = {
+            'users': user_results,
+            'posts': post_results
+        }
+        return Response(results)
