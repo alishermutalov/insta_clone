@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from base_app.custom_pagination import CustomPagination
 from .models import Post, PostComment, PostLike, CommentLike
-from users.models import User
+from users.models import User, DONE, PHOTO_DONE
 from . import serializers
 # Create your views here.
 
@@ -205,6 +205,7 @@ class SearchAPIView(GenericAPIView):
 
         if query:
             user_queryset = User.objects.filter(
+                Q(auth_status=DONE) | Q(auth_status=PHOTO_DONE) &
                 Q(username__icontains=query) |
                 Q(first_name__icontains=query) |
                 Q(last_name__icontains=query)
