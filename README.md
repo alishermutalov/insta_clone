@@ -1,6 +1,6 @@
 # Insta Clone API
 
-An Instagram-like social media platform built with Django and Django REST Framework. This project allows users to create posts, like posts, comment on posts, like comments, and manage user accounts.
+An Instagram-like social media platform built with Django and Django REST Framework. This project allows users to create posts, like posts, comment on posts, like comments, search for posts and users, and manage user accounts.
 
 ## Features
 
@@ -9,6 +9,7 @@ An Instagram-like social media platform built with Django and Django REST Framew
 - Post creation, update, and deletion
 - Commenting on posts
 - Liking posts and comments
+- Search for posts and users by username, caption, or full name
 - Swagger and Redoc API documentation
 
 ## Project Structure
@@ -45,6 +46,9 @@ The project is organized into two main apps:
 - `GET /post/comments/<uuid:pk>/likes/` - List all likes on a comment
 - `POST /post/comments/<uuid:pk>/likes/create/` - Like a comment
 - `DELETE /post/comments/<uuid:pk>/likes/delete/` - Remove like from a comment
+
+### Search
+- `GET /search/` - Search for posts or users by username, post's caption, or full name. Results are sorted by the highest match.
 
 ## API Documentation
 
@@ -97,5 +101,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Contact
 
 For any questions or issues, please contact [amutalov001@gmail.com](mailto:amutalov001@gmail.com).
-```
-
