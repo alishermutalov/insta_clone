@@ -3,6 +3,20 @@ from users.models import User
 from .models import Post, PostComment, CommentLike, PostLike
 
 
+class UserSearchSerializer(serializers.ModelSerializer):
+    full_name = serializers.ReadOnlyField() 
+
+    class Meta:
+        model = User
+        fields = ['username', 'full_name', 'photo']
+
+
+class PostSearchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Post
+        fields = ['author', 'caption', 'media']
+
+
 class UserSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(read_only=True)
     
