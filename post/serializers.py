@@ -70,6 +70,7 @@ class CommentSerializer(serializers.ModelSerializer):
 class CommentLikeSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(read_only=True)
     author = UserSerializer(read_only=True)
+    comment = serializers.PrimaryKeyRelatedField(read_only=True)
     
     class Meta:
         model = CommentLike
@@ -79,6 +80,7 @@ class CommentLikeSerializer(serializers.ModelSerializer):
 class PostLikeSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(read_only=True)
     author = UserSerializer(read_only=True)
+    post = serializers.PrimaryKeyRelatedField(read_only=True)
     
     class Meta:
         model = PostLike
